@@ -88,11 +88,28 @@ jobs:
 
       - name: Prepare Patch
         run: |
+          set -ex
+          ls -al
+
           sed -i 's@bookworm@trixie@g' Dockerfile
           sed -i 's@FROM node@FROM ghcr.io/loong64/node@g' Dockerfile
           sed -i 's@FROM python@FROM ghcr.io/loong64/python@g' Dockerfile
-          echo "COMMIT_SHA=$(git rev-parse HEAD)" >> $GITHUB_ENV
 
+          if [ "${{ matrix.context }}" = "api" ]; then
+            sed -i 's@libldap-2.5-0@libldap2@g' Dockerfile
+            sed -i 's@pip install@pip install -i https://gitlab.com/api/v4/projects/65746188/packages/pypi/simple@g' Dockerfile
+            sed -i 's@"pymilvus@# "pymilvus@g' pyproject.toml
+            rm -f uv.lock
+            docker run --rm \
+              --platform=linux/loong64 \
+              --env PIP_EXTRA_INDEX_URL=https://gitlab.com/api/v4/projects/65746188/packages/pypi/simple \
+              --env UV_EXTRA_INDEX_URL=https://gitlab.com/api/v4/projects/65746188/packages/pypi/simple \
+              --volume $(pwd):/app/api \
+              --workdir /app/api \
+              ghcr.io/loong64/python:3.12-slim-trixie \
+              sh -c "pip install uv && uv lock"
+          fi
+          echo "COMMIT_SHA=$(git rev-parse HEAD)" >> $GITHUB_ENV
         working-directory: ${{ matrix.context }}
 
       - name: Build Docker image
