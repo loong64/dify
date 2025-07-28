@@ -1,0 +1,133 @@
+name: Build and Push API & Web
+
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'Version to build'
+        required: false
+        default: ''
+  schedule:
+    - cron: '0 20 * * *'
+
+concurrency:
+  group: build-push-${{ github.head_ref || github.run_id }}
+  cancel-in-progress: true
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    outputs:
+      version: ${{ steps.get-version.outputs.version }}
+      build: ${{ steps.check-build.outputs.build }}
+    steps:
+      - name: Check Version
+        id: get-version
+        run: |
+          if [ -n "${{ inputs.version }}" ]; then
+            version="${{ inputs.version }}"
+          else
+            version=$(curl -s 'https://api.github.com/repos/langgenius/dify/releases/latest' | jq -r ".tag_name")
+          fi
+          echo "Current Version: ${version}"
+          if [ -z "${version}" ] || [ "${version}" == "null" ]; then
+            echo "Failed to get version"
+            exit 1
+          fi
+          echo "version=${version}" >> $GITHUB_ENV
+          echo "version=${version}" >> $GITHUB_OUTPUT
+
+      - name: Check Build
+        id: check-build
+        run: |
+          gh release view ${version} -R ${{ github.repository }} >/dev/null 2>&1 || echo "build=1" >> $GITHUB_OUTPUT
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  build:
+    runs-on: ubuntu-latest
+    needs: check
+    if: needs.check.outputs.build == '1'
+    env:
+      version: ${{ needs.check.outputs.version }}
+    strategy:
+      matrix:
+        include:
+          - service_name: "build-api-loong64"
+            image_name_env: "langgenius/dify-api"
+            context: "api"
+            platform: linux/loong64
+          - service_name: "build-web-loong64"
+            image_name_env: "langgenius/dify-web"
+            context: "web"
+            platform: linux/loong64
+
+    steps:
+      - name: Check Version
+        run: |
+          echo "Current Version: ${version}"
+
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          repository: langgenius/dify
+          ref: ${{ env.version }}
+
+      - name: Setup QEMU
+        uses: docker/setup-qemu-action@v3
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Login to GitHub Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.repository_owner }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Prepare Patch
+        run: |
+          sed -i 's@bookworm@trixie@g' Dockerfile
+          sed -i 's@FROM node@FROM ghcr.io/loong64/node@g' Dockerfile
+          sed -i 's@FROM python@FROM ghcr.io/loong64/python@g' Dockerfile
+          echo "COMMIT_SHA=$(git rev-parse HEAD)" >> $GITHUB_ENV
+
+        working-directory: ${{ matrix.context }}
+
+      - name: Build Docker image
+        uses: docker/build-push-action@v6
+        with:
+          context: "${{ matrix.context }}"
+          platforms: ${{ matrix.platform }}
+          push: true
+          build-args: |
+            COMMIT_SHA=${{ env.COMMIT_SHA }}
+          tags: |
+            ghcr.io/${{ github.repository_owner }}/${{ matrix.image_name_env }}:${{ env.version }}
+            ghcr.io/${{ github.repository_owner }}/${{ matrix.image_name_env }}:latest
+          outputs: type=image,oci-mediatypes=true,compression=zstd,compression-level=3,force-compression=true
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+  release:
+    runs-on: ubuntu-latest
+    needs: [ check, build ]
+    if: needs.check.outputs.build == '1'
+    env:
+      version: ${{ needs.check.outputs.version }}
+    steps:
+      - name: Check Version
+        run: |
+          echo "Current Version: ${version}"
+
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Release
+        uses: softprops/action-gh-release@v2
+        with:
+          name: ${{ env.version }}
+          tag_name: ${{ env.version }}
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
