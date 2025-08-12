@@ -99,6 +99,7 @@ jobs:
             sed -i 's@libldap-2.5-0@libldap2@g' Dockerfile
             sed -i 's@pip install@pip install -i https://gitlab.com/api/v4/projects/65746188/packages/pypi/simple@g' Dockerfile
             sed -i 's@"pymilvus@# "pymilvus@g' pyproject.toml
+            sed -i 's@"clickzetta-connector-python@# "clickzetta-connector-python@g' pyproject.toml
             rm -f uv.lock
             docker run --rm \
               --platform=linux/loong64 \
