@@ -94,7 +94,7 @@ jobs:
           sed -i 's@FROM python@FROM ghcr.io/loong64/python@g' Dockerfile
 
           if [ "${{ matrix.context }}" = "api" ]; then
-            sed -i -E 's/(=[0-9.:+~A-Za-z-]+)//g' Dockerfile
+            sed -i -E 's/((libldap-2.5-0|libsqlite3-0|zlib1g))=([0-9.:+~A-Za-z-]+)/\1/g' Dockerfile
             sed -i 's@libldap-2.5-0@libldap2@g' Dockerfile
             sed -i 's@pip install@pip install -i https://gitlab.com/api/v4/projects/65746188/packages/pypi/simple@g' Dockerfile
             git diff
