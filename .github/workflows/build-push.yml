@@ -95,9 +95,11 @@ jobs:
 
           if [ "${{ matrix.context }}" = "api" ]; then
             sed -i -E 's/((libldap-2.5-0|libsqlite3-0|zlib1g))=([0-9.:+~A-Za-z-]+)/\1/g' Dockerfile
+            sed -i 's@nodejs=${NODE_PACKAGE_VERSION}@nodejs@g' Dockerfile
             sed -i 's@libldap-2.5-0@libldap2@g' Dockerfile
             sed -i 's@pip install@pip install -i https://gitlab.com/api/v4/projects/65746188/packages/pypi/simple@g' Dockerfile
             sed -i 's@"intersystems-irispython@# "intersystems-irispython@g' pyproject.toml
+            sed -i 's@"mysql-connector-python>=9.3.0"@"mysql-connector-python<9.6"@g' pyproject.toml
             git diff
             rm -f uv.lock
             docker run --rm \
@@ -126,7 +128,6 @@ jobs:
           tags: |
             ghcr.io/${{ github.repository_owner }}/${{ matrix.image_name_env }}:${{ env.version }}
             ghcr.io/${{ github.repository_owner }}/${{ matrix.image_name_env }}:latest
-          outputs: type=image,oci-mediatypes=true,compression=zstd,compression-level=3,force-compression=true
           cache-from: type=gha
           cache-to: type=gha,mode=max
 
