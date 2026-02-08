@@ -109,6 +109,9 @@ jobs:
               ghcr.io/loong64/python:3.12-slim-trixie \
               sh -c "pip install uv && uv lock"
           fi
+          if [ "${{ matrix.context }}" = "web" ]; then
+            sed -i 's@next build@next build --webpack@g' package.json
+          fi
           echo "COMMIT_SHA=$(git rev-parse HEAD)" >> $GITHUB_ENV
         working-directory: ${{ matrix.context }}
 
