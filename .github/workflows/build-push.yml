@@ -16,7 +16,7 @@ concurrency:
 
 jobs:
   check:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-slim
     outputs:
       version: ${{ steps.get-version.outputs.version }}
       build: ${{ steps.check-build.outputs.build }}
@@ -68,19 +68,19 @@ jobs:
           echo "Current Version: ${version}"
 
       - name: Checkout code
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
         with:
           repository: langgenius/dify
           ref: ${{ env.version }}
 
       - name: Setup QEMU
-        uses: docker/setup-qemu-action@v3
+        uses: docker/setup-qemu-action@v4
 
       - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@v3
+        uses: docker/setup-buildx-action@v4
 
       - name: Login to GitHub Container Registry
-        uses: docker/login-action@v3
+        uses: docker/login-action@v4
         with:
           registry: ghcr.io
           username: ${{ github.repository_owner }}
@@ -112,13 +112,15 @@ jobs:
               sh -c "pip install uv && uv lock"
           fi
           if [ "${{ matrix.context }}" = "web" ]; then
-            sed -i 's@next build@next build --webpack@g' package.json
+            sed -i 's@"next build"@"next build --webpack"@g' package.json
+            cd ..
+            wget -qO - https://github.com/loong64/dify/raw/refs/heads/main/patch_loong64.patch | patch -p1
           fi
           echo "COMMIT_SHA=$(git rev-parse HEAD)" >> $GITHUB_ENV
         working-directory: ${{ matrix.context }}
 
       - name: Build Docker image
-        uses: docker/build-push-action@v6
+        uses: docker/build-push-action@v7
         with:
           context: "${{ matrix.context }}"
           platforms: ${{ matrix.platform }}
@@ -132,7 +134,7 @@ jobs:
           cache-to: type=gha,mode=max
 
   release:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-slim
     needs: [ check, build ]
     if: needs.check.outputs.build == '1'
     env:
@@ -143,7 +145,7 @@ jobs:
           echo "Current Version: ${version}"
 
       - name: Checkout code
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
 
       - name: Release
         uses: softprops/action-gh-release@v2

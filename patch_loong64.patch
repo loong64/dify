@@ -1,0 +1,28 @@
+diff --git a/web/env.ts b/web/env.ts
+index 8ecde76..dbb51ac 100644
+--- a/web/env.ts
++++ b/web/env.ts
+@@ -2,8 +2,8 @@ import type { CamelCase, Replace } from 'string-ts'
+ import { createEnv } from '@t3-oss/env-nextjs'
+ import { concat, kebabCase, length, slice } from 'string-ts'
+ import * as z from 'zod'
+-import { isClient, isServer } from './utils/client'
+-import { ObjectFromEntries, ObjectKeys } from './utils/object'
++import { isClient, isServer } from './utils/client.ts'
++import { ObjectFromEntries, ObjectKeys } from './utils/object.ts'
+ 
+ const CLIENT_ENV_PREFIX = 'NEXT_PUBLIC_'
+ type ClientSchema = Record<`${typeof CLIENT_ENV_PREFIX}${string}`, z.ZodType>
+diff --git a/web/next.config.ts b/web/next.config.ts
+index 838aa56..6e929dc 100644
+--- a/web/next.config.ts
++++ b/web/next.config.ts
+@@ -1,7 +1,7 @@
+ import type { NextConfig } from '@/next'
+ import createMDX from '@next/mdx'
+ import { codeInspectorPlugin } from 'code-inspector-plugin'
+-import { env } from './env'
++import { env } from './env.ts'
+ 
+ const isDev = process.env.NODE_ENV === 'development'
+ const withMDX = createMDX()
