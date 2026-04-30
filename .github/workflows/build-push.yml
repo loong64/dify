@@ -55,17 +55,22 @@ jobs:
         include:
           - service_name: "build-api-loong64"
             image_name_env: "langgenius/dify-api"
+            artifact_context: "api"
             context: "api"
+            file: "api/Dockerfile"
             platform: linux/loong64
           - service_name: "build-web-loong64"
             image_name_env: "langgenius/dify-web"
-            context: "web"
+            artifact_context: "web"
+            context: "."
+            file: "web/Dockerfile"
             platform: linux/loong64
 
     steps:
-      - name: Check Version
+      - name: Prepare
         run: |
-          echo "Current Version: ${version}"
+          platform=${{ matrix.platform }}
+          echo "PLATFORM_PAIR=${platform//\//-}" >> $GITHUB_ENV
 
       - name: Checkout code
         uses: actions/checkout@v6
@@ -90,16 +95,20 @@ jobs:
         run: |
           set -ex
           sed -i 's@bookworm@trixie@g' Dockerfile
+          sed -i 's@pnpm-lock.yaml @@g' Dockerfile
+          sed -i 's@ --frozen-lockfile@@g' Dockerfile
           sed -i 's@FROM node@FROM ghcr.io/loong64/node@g' Dockerfile
           sed -i 's@FROM python@FROM ghcr.io/loong64/python@g' Dockerfile
 
-          if [ "${{ matrix.context }}" = "api" ]; then
+          if [ "${{ matrix.artifact_context }}" = "api" ]; then
             sed -i -E 's/((libldap-2.5-0|libsqlite3-0|zlib1g))=([0-9.:+~A-Za-z-]+)/\1/g' Dockerfile
             sed -i 's@nodejs=${NODE_PACKAGE_VERSION}@nodejs@g' Dockerfile
             sed -i 's@libldap-2.5-0@libldap2@g' Dockerfile
             sed -i 's@pip install@pip install -i https://gitlab.com/api/v4/projects/65746188/packages/pypi/simple@g' Dockerfile
-            sed -i 's@"intersystems-irispython@# "intersystems-irispython@g' pyproject.toml
             sed -i 's@"mysql-connector-python>=9.3.0"@"mysql-connector-python<9.6"@g' pyproject.toml
+            sed -i 's@"dify-vdb-iris",@# "dify-vdb-iris",@g' pyproject.toml
+            sed -i 's@^vdb-iris =@# vdb-iris =@g' pyproject.toml
+            sed -i 's@dify-vdb-iris =@# dify-vdb-iris =@g' pyproject.toml
             git diff
             rm -f uv.lock
             docker run --rm \
@@ -111,18 +120,19 @@ jobs:
               ghcr.io/loong64/python:3.12-slim-trixie \
               sh -c "pip install uv && uv lock"
           fi
-          if [ "${{ matrix.context }}" = "web" ]; then
+          if [ "${{ matrix.artifact_context }}" = "web" ]; then
             sed -i 's@"next build"@"next build --webpack"@g' package.json
             cd ..
             wget -qO - https://github.com/loong64/dify/raw/refs/heads/main/patch_loong64.patch | patch -p1
           fi
           echo "COMMIT_SHA=$(git rev-parse HEAD)" >> $GITHUB_ENV
-        working-directory: ${{ matrix.context }}
+        working-directory: ${{ matrix.artifact_context }}
 
       - name: Build Docker image
         uses: docker/build-push-action@v7
         with:
           context: "${{ matrix.context }}"
+          file: "${{ matrix.file }}"
           platforms: ${{ matrix.platform }}
           push: true
           build-args: |
