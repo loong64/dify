@@ -95,8 +95,6 @@ jobs:
         run: |
           set -ex
           sed -i 's@bookworm@trixie@g' Dockerfile
-          sed -i 's@pnpm-lock.yaml @@g' Dockerfile
-          sed -i 's@ --frozen-lockfile@@g' Dockerfile
           sed -i 's@FROM node@FROM ghcr.io/loong64/node@g' Dockerfile
           sed -i 's@FROM python@FROM ghcr.io/loong64/python@g' Dockerfile
 
@@ -122,11 +120,34 @@ jobs:
           fi
           if [ "${{ matrix.artifact_context }}" = "web" ]; then
             sed -i 's@"next build"@"next build --webpack"@g' package.json
+            echo "NODE_VERSION=$(sed -n 's/.*node:\([0-9]*\).*/\1/p' Dockerfile)" >> $GITHUB_ENV
             cd ..
             wget -qO - https://github.com/loong64/dify/raw/refs/heads/main/patch_loong64.patch | patch -p1
           fi
           echo "COMMIT_SHA=$(git rev-parse HEAD)" >> $GITHUB_ENV
         working-directory: ${{ matrix.artifact_context }}
+
+      - name: Setup pnpm
+        if: matrix.artifact_context == 'web'
+        uses: pnpm/action-setup@v4
+        with:
+          run_install: false
+
+      - name: Install Node.js
+        if: matrix.artifact_context == 'web'
+        uses: actions/setup-node@v6
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'pnpm'
+
+      - name: Install dependencies
+        if: matrix.artifact_context == 'web'
+        run: |
+          pnpm add -w \
+            https://github.com/loong64/vite-plus/releases/download/v0.1.19/voidzero-dev-vite-plus-linux-loong64-gnu-0.1.19.tgz \
+            https://github.com/loong64/vite-plus/releases/download/v0.1.19/voidzero-dev-vite-plus-linux-loong64-musl-0.1.19.tgz \
+            https://github.com/loong64/vite-plus/releases/download/v0.1.19/voidzero-dev-vite-plus-cli-linux-loong64-gnu-0.1.19.tgz \
+            https://github.com/loong64/vite-plus/releases/download/v0.1.19/voidzero-dev-vite-plus-cli-linux-loong64-musl-0.1.19.tgz
 
       - name: Build Docker image
         uses: docker/build-push-action@v7
