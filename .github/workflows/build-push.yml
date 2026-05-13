@@ -143,10 +143,10 @@ jobs:
       - name: Install dependencies
         if: matrix.artifact_context == 'web'
         run: |
-          VITE_PLUS_VERSION=0.1.19
+          VITE_PLUS_VERSION=0.1.20
           LIGHTNINGCSS_VERSION=1.32.0
           TAILWINDCSS_VERSION=4.2.4
-          NEXT_VERSION=16.2.4
+          NEXT_VERSION=16.2.6
           pnpm add -w \
             https://github.com/loong64/vite-plus/releases/download/v${VITE_PLUS_VERSION}/voidzero-dev-vite-plus-linux-loong64-musl-${VITE_PLUS_VERSION}.tgz \
             https://github.com/loong64/vite-plus/releases/download/v${VITE_PLUS_VERSION}/voidzero-dev-vite-plus-cli-linux-loong64-musl-${VITE_PLUS_VERSION}.tgz
