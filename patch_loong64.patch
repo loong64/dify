@@ -30,6 +30,28 @@ index 6098652..46c401d 100644
          # install fonts to support the use of tools like pypdfium2
          fonts-noto-cjk \
          # install a package to improve the accuracy of guessing mime type and file extension
+diff --git a/api/configs/middleware/__init__.py b/api/configs/middleware/__init__.py
+index ee8b93a..08f524f 100644
+--- a/api/configs/middleware/__init__.py
++++ b/api/configs/middleware/__init__.py
+@@ -28,7 +28,7 @@ from .vdb.couchbase_config import CouchbaseConfig
+ from .vdb.elasticsearch_config import ElasticsearchConfig
+ from .vdb.hologres_config import HologresConfig
+ from .vdb.huawei_cloud_config import HuaweiCloudConfig
+-from .vdb.iris_config import IrisVectorConfig
++# from .vdb.iris_config import IrisVectorConfig
+ from .vdb.lindorm_config import LindormConfig
+ from .vdb.matrixone_config import MatrixoneConfig
+ from .vdb.milvus_config import MilvusConfig
+@@ -378,7 +378,7 @@ class MiddlewareConfig(
+     ClickzettaConfig,
+     HologresConfig,
+     HuaweiCloudConfig,
+-    IrisVectorConfig,
++    # IrisVectorConfig,
+     MilvusConfig,
+     AlibabaCloudMySQLConfig,
+     MyScaleConfig,
 diff --git a/api/pyproject.toml b/api/pyproject.toml
 index 40834b8..9c02df7 100644
 --- a/api/pyproject.toml
