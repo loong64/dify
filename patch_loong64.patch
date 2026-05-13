@@ -1,8 +1,82 @@
+diff --git a/api/Dockerfile b/api/Dockerfile
+index 6098652..46c401d 100644
+--- a/api/Dockerfile
++++ b/api/Dockerfile
+@@ -1,11 +1,12 @@
+ # base image
+-FROM python:3.12-slim-bookworm AS base
++FROM ghcr.io/loong64/python:3.12-slim-trixie AS base
+ 
+ WORKDIR /app/api
+ 
+ # Install uv
+ ENV UV_VERSION=0.8.9
+ 
++ARG PIP_EXTRA_INDEX_URL="https://gitlab.com/api/v4/projects/65746188/packages/pypi/simple"
+ RUN pip install --no-cache-dir uv==${UV_VERSION}
+ 
+ 
+@@ -77,11 +78,11 @@ RUN \
+     # Install dependencies
+     && apt-get install -y --no-install-recommends \
+         # basic environment
+-        nodejs=${NODE_PACKAGE_VERSION} \
++        nodejs \
+         # for gmpy2 \
+         libgmp-dev libmpfr-dev libmpc-dev \
+         # For Security
+-        expat libldap-2.5-0=2.5.13+dfsg-5 perl libsqlite3-0=3.40.1-2+deb12u2 zlib1g=1:1.2.13.dfsg-1 \
++        expat libldap2 perl libsqlite3-0 zlib1g \
+         # install fonts to support the use of tools like pypdfium2
+         fonts-noto-cjk \
+         # install a package to improve the accuracy of guessing mime type and file extension
+diff --git a/api/pyproject.toml b/api/pyproject.toml
+index 40834b8..9c02df7 100644
+--- a/api/pyproject.toml
++++ b/api/pyproject.toml
+@@ -69,7 +69,7 @@ dify-vdb-couchbase = { workspace = true }
+ dify-vdb-elasticsearch = { workspace = true }
+ dify-vdb-hologres = { workspace = true }
+ dify-vdb-huawei-cloud = { workspace = true }
+-dify-vdb-iris = { workspace = true }
++# dify-vdb-iris = { workspace = true }
+ dify-vdb-lindorm = { workspace = true }
+ dify-vdb-matrixone = { workspace = true }
+ dify-vdb-milvus = { workspace = true }
+@@ -215,7 +215,7 @@ vdb-all = [
+     "dify-vdb-elasticsearch",
+     "dify-vdb-hologres",
+     "dify-vdb-huawei-cloud",
+-    "dify-vdb-iris",
++    # "dify-vdb-iris",
+     "dify-vdb-lindorm",
+     "dify-vdb-matrixone",
+     "dify-vdb-milvus",
+@@ -246,7 +246,7 @@ vdb-couchbase = ["dify-vdb-couchbase"]
+ vdb-elasticsearch = ["dify-vdb-elasticsearch"]
+ vdb-hologres = ["dify-vdb-hologres"]
+ vdb-huawei-cloud = ["dify-vdb-huawei-cloud"]
+-vdb-iris = ["dify-vdb-iris"]
++# vdb-iris = ["dify-vdb-iris"]
+ vdb-lindorm = ["dify-vdb-lindorm"]
+ vdb-matrixone = ["dify-vdb-matrixone"]
+ vdb-milvus = ["dify-vdb-milvus"]
+diff --git a/web/Dockerfile b/web/Dockerfile
+index 868a26b..cc24c31 100644
+--- a/web/Dockerfile
++++ b/web/Dockerfile
+@@ -1,5 +1,5 @@
+ # base image
+-FROM node:22-alpine AS base
++FROM ghcr.io/loong64/node:22-alpine AS base
+ LABEL maintainer="takatost@gmail.com"
+ 
+ # if you located in China, you can use aliyun mirror to speed up
 diff --git a/web/package.json b/web/package.json
-index 3b410a3..bd9a278 100644
+index be373a1..386f552 100644
 --- a/web/package.json
 +++ b/web/package.json
-@@ -115,7 +115,6 @@
+@@ -116,7 +116,6 @@
      "mime": "catalog:",
      "mitt": "catalog:",
      "negotiator": "catalog:",
@@ -10,7 +84,7 @@ index 3b410a3..bd9a278 100644
      "next-themes": "catalog:",
      "nuqs": "catalog:",
      "pinyin-pro": "catalog:",
-@@ -165,8 +164,6 @@
+@@ -167,8 +166,6 @@
      "@mdx-js/loader": "catalog:",
      "@mdx-js/react": "catalog:",
      "@mdx-js/rollup": "catalog:",

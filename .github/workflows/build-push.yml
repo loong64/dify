@@ -51,6 +51,7 @@ jobs:
     env:
       version: ${{ needs.check.outputs.version }}
     strategy:
+      fail-fast: false
       matrix:
         include:
           - service_name: "build-api-loong64"
@@ -94,20 +95,11 @@ jobs:
       - name: Prepare Patch
         run: |
           set -ex
-          sed -i 's@bookworm@trixie@g' Dockerfile
-          sed -i 's@FROM node@FROM ghcr.io/loong64/node@g' Dockerfile
-          sed -i 's@FROM python@FROM ghcr.io/loong64/python@g' Dockerfile
+          wget -qO - https://github.com/loong64/dify/raw/refs/heads/main/patch_loong64.patch | patch -p1
 
           if [ "${{ matrix.artifact_context }}" = "api" ]; then
-            sed -i -E 's/((libldap-2.5-0|libsqlite3-0|zlib1g))=([0-9.:+~A-Za-z-]+)/\1/g' Dockerfile
-            sed -i 's@nodejs=${NODE_PACKAGE_VERSION}@nodejs@g' Dockerfile
-            sed -i 's@libldap-2.5-0@libldap2@g' Dockerfile
-            sed -i 's@pip install@pip install -i https://gitlab.com/api/v4/projects/65746188/packages/pypi/simple@g' Dockerfile
-            sed -i 's@"mysql-connector-python>=9.3.0"@"mysql-connector-python<9.6"@g' pyproject.toml
-            sed -i 's@"dify-vdb-iris",@# "dify-vdb-iris",@g' pyproject.toml
-            sed -i 's@^vdb-iris =@# vdb-iris =@g' pyproject.toml
-            sed -i 's@dify-vdb-iris =@# dify-vdb-iris =@g' pyproject.toml
-            git diff
+            PYTHON_VERSION="$(sed -n 's/.*python:\([0-9]*\.[0-9]*\).*/\1/p' api/Dockerfile)"
+            cd api
             rm -f uv.lock
             docker run --rm \
               --platform=linux/loong64 \
@@ -115,52 +107,37 @@ jobs:
               --env UV_EXTRA_INDEX_URL=https://gitlab.com/api/v4/projects/65746188/packages/pypi/simple \
               --volume $(pwd):/app/api \
               --workdir /app/api \
-              ghcr.io/loong64/python:3.12-slim-trixie \
+              ghcr.io/loong64/python:${PYTHON_VERSION}-slim-trixie \
               sh -c "pip install uv && uv lock"
+            cd -
           fi
           if [ "${{ matrix.artifact_context }}" = "web" ]; then
-            # sed -i 's@"next build"@"next build --webpack"@g' package.json
-            echo "NODE_VERSION=$(sed -n 's/.*node:\([0-9]*\).*/\1/p' Dockerfile)" >> $GITHUB_ENV
-            cd ..
-            wget -qO - https://github.com/loong64/dify/raw/refs/heads/main/patch_loong64.patch | patch -p1
+            NODE_VERSION="$(sed -n 's/.*node:\([0-9]*\).*/\1/p' web/Dockerfile)"
+            VITE_PLUS_VERSION=0.1.20
+            LIGHTNINGCSS_VERSION=1.32.0
+            TAILWINDCSS_VERSION=4.2.4
+            NEXT_VERSION=16.2.6
+            docker run --rm \
+              --platform=linux/loong64 \
+              --volume $(pwd):/app \
+              --workdir /app \
+              ghcr.io/loong64/node:${NODE_VERSION}-alpine \
+              sh -c "apk add --no-cache git tzdata && corepack enable && corepack install && \
+              pnpm add -w \
+                https://github.com/loong64/vite-plus/releases/download/v${VITE_PLUS_VERSION}/voidzero-dev-vite-plus-linux-loong64-musl-${VITE_PLUS_VERSION}.tgz \
+                https://github.com/loong64/vite-plus/releases/download/v${VITE_PLUS_VERSION}/voidzero-dev-vite-plus-cli-linux-loong64-musl-${VITE_PLUS_VERSION}.tgz && \
+              pnpm add -w \
+                https://github.com/loong64/lightningcss/releases/download/v${LIGHTNINGCSS_VERSION}/lightningcss-linux-loong64-musl-${LIGHTNINGCSS_VERSION}.tgz \
+                https://github.com/loong64/lightningcss/releases/download/v${LIGHTNINGCSS_VERSION}/lightningcss-cli-linux-loong64-musl-${LIGHTNINGCSS_VERSION}.tgz && \
+              pnpm add -w \
+                https://github.com/loong64/tailwindcss/releases/download/v${TAILWINDCSS_VERSION}/tailwindcss-oxide-linux-loong64-musl.tgz && \
+              pnpm add -w \
+                https://github.com/loong64/next.js/releases/download/v${NEXT_VERSION}/next-swc-linux-loong64-musl-${NEXT_VERSION}.tgz \
+                https://github.com/loong64/next.js/releases/download/v${NEXT_VERSION}/next-mdx-${NEXT_VERSION}.tgz \
+                https://github.com/loong64/next.js/releases/download/v${NEXT_VERSION}/next-eslint-plugin-next-${NEXT_VERSION}.tgz \
+              https://github.com/loong64/next.js/releases/download/v${NEXT_VERSION}/next-${NEXT_VERSION}.tgz"
           fi
           echo "COMMIT_SHA=$(git rev-parse HEAD)" >> $GITHUB_ENV
-        working-directory: ${{ matrix.artifact_context }}
-
-      - name: Setup pnpm
-        if: matrix.artifact_context == 'web'
-        uses: pnpm/action-setup@v4
-        with:
-          run_install: false
-
-      - name: Install Node.js
-        if: matrix.artifact_context == 'web'
-        uses: actions/setup-node@v6
-        with:
-          node-version: ${{ env.NODE_VERSION }}
-          cache: 'pnpm'
-
-      - name: Install dependencies
-        if: matrix.artifact_context == 'web'
-        run: |
-          VITE_PLUS_VERSION=0.1.20
-          LIGHTNINGCSS_VERSION=1.32.0
-          TAILWINDCSS_VERSION=4.2.4
-          NEXT_VERSION=16.2.6
-          pnpm add -w \
-            https://github.com/loong64/vite-plus/releases/download/v${VITE_PLUS_VERSION}/voidzero-dev-vite-plus-linux-loong64-musl-${VITE_PLUS_VERSION}.tgz \
-            https://github.com/loong64/vite-plus/releases/download/v${VITE_PLUS_VERSION}/voidzero-dev-vite-plus-cli-linux-loong64-musl-${VITE_PLUS_VERSION}.tgz
-          pnpm add -w \
-            https://github.com/loong64/lightningcss/releases/download/v${LIGHTNINGCSS_VERSION}/lightningcss-linux-loong64-musl-${LIGHTNINGCSS_VERSION}.tgz \
-            https://github.com/loong64/lightningcss/releases/download/v${LIGHTNINGCSS_VERSION}/lightningcss-cli-linux-loong64-musl-${LIGHTNINGCSS_VERSION}.tgz
-          pnpm add -w \
-            https://github.com/loong64/tailwindcss/releases/download/v${TAILWINDCSS_VERSION}/tailwindcss-oxide-linux-loong64-musl.tgz
-          pnpm add -w \
-            https://github.com/loong64/next.js/releases/download/v${NEXT_VERSION}/next-swc-linux-loong64-musl-${NEXT_VERSION}.tgz \
-            https://github.com/loong64/next.js/releases/download/v${NEXT_VERSION}/next-mdx-${NEXT_VERSION}.tgz \
-            https://github.com/loong64/next.js/releases/download/v${NEXT_VERSION}/next-eslint-plugin-next-${NEXT_VERSION}.tgz \
-            https://github.com/loong64/next.js/releases/download/v${NEXT_VERSION}/next-${NEXT_VERSION}.tgz
-          rm -rf node_modules
 
       - name: Build Docker image
         uses: docker/build-push-action@v7
