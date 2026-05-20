@@ -99,24 +99,22 @@ jobs:
 
           if [ "${{ matrix.artifact_context }}" = "api" ]; then
             PYTHON_VERSION="$(sed -n 's/.*python:\([0-9]*\.[0-9]*\).*/\1/p' api/Dockerfile)"
-            cd api
-            rm -f uv.lock
+            rm -f api/uv.lock
             docker run --rm \
               --platform=linux/loong64 \
               --env PIP_EXTRA_INDEX_URL=https://gitlab.com/api/v4/projects/65746188/packages/pypi/simple \
               --env UV_EXTRA_INDEX_URL=https://gitlab.com/api/v4/projects/65746188/packages/pypi/simple \
-              --volume $(pwd):/app/api \
+              --volume $(pwd):/app \
               --workdir /app/api \
               ghcr.io/loong64/python:${PYTHON_VERSION}-slim-trixie \
               sh -c "pip install uv && uv lock"
-            cd -
           fi
           if [ "${{ matrix.artifact_context }}" = "web" ]; then
             NODE_VERSION="$(sed -n 's/.*node:\([0-9]*\).*/\1/p' web/Dockerfile)"
-            VITE_PLUS_VERSION=0.1.20
-            LIGHTNINGCSS_VERSION=1.32.0
-            TAILWINDCSS_VERSION=4.2.4
-            NEXT_VERSION=16.2.6
+            VITE_PLUS_VERSION=$(yq '.catalogs.default.vite-plus.version' pnpm-lock.yaml)
+            TAILWINDCSS_VERSION=$(yq '.catalogs.default.tailwindcss.version' pnpm-lock.yaml)
+            NEXT_VERSION=$(yq '.catalogs.default.next.version' pnpm-lock.yaml)
+            LIGHTNINGCSS_VERSION=$(grep -E "lightningcss: [0-9]+" pnpm-lock.yaml | awk '{print $2}' | uniq)
             docker run --rm \
               --platform=linux/loong64 \
               --volume $(pwd):/app \
