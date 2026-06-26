@@ -96,6 +96,9 @@ jobs:
         run: |
           set -ex
           wget -qO - https://github.com/loong64/dify/raw/refs/heads/main/patch_loong64.patch | patch -p1
+          sed -i 's@FROM node@FROM ghcr.io/loong64/node@g' web/Dockerfile
+          sed -i 's@FROM python@FROM ghcr.io/loong64/python@g' api/Dockerfile
+          sed -i 's@bookworm@trixie@g' api/Dockerfile
 
           if [ "${{ matrix.artifact_context }}" = "api" ]; then
             PYTHON_VERSION="$(sed -n 's/.*python:\([0-9]*\.[0-9]*\).*/\1/p' api/Dockerfile)"
