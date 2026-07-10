@@ -110,7 +110,7 @@ jobs:
               --volume $(pwd):/app \
               --workdir /app/api \
               ghcr.io/loong64/python:${PYTHON_VERSION}-slim-trixie \
-              sh -c "pip install uv && uv lock"
+              sh -c "apt-get update && apt-get install -y git && pip install uv && uv lock"
           fi
           if [ "${{ matrix.artifact_context }}" = "web" ]; then
             NODE_VERSION="$(sed -n 's/.*node:\([0-9]*\).*/\1/p' web/Dockerfile)"
